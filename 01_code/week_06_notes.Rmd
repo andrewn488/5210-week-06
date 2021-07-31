@@ -1,0 +1,365 @@
+---
+title: "week_06_notes"
+author: "Andrew Nalundasan"
+date: "7/31/2021"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# load libraries
+library(tidyverse)
+library(ggiraph)
+library(vtable)
+library(modelsummary)
+library(MultNonParam)
+library(agricolae)
+```
+
+
+# Overview video
+
++ GLM for logit
+
+    - Explicitly say what the 1 value is
+    
+```{r}
+
+
+data(mtcars)
+
+vtable(mtcars)
+
+mtcars <- mtcars %>% 
+  mutate(Transmission = case_when(
+    am == 0 ~ "Automatic", 
+    am == 1 ~ "Manual"))
+  
+
+mtcars <- mtcars %>% 
+  mutate(Trans_for_GLM = Transmission == 'Automatic')
+
+glm(Trans_for_GLM ~ mpg + hp, data = mtcars)
+
+```
+
++ don't show regression tables to a non-technical audience
+
+
+```{r}
+
+m <- glm(Trans_for_GLM ~ mpg + hp, data = mtcars)
+summary(m)
+msummary(m, stars = TRUE)
+
+```
+
+
++ word clouds are not very useful but executives love them
+
+    - What are you supposed to be surprised by from word clouds?
+    - They won't teach you anything
+    
++ plotly but use ggiraph instead
+
+    - This can be written in ggplot syntax
+    
+```{r}
+# this is the way that NHK makes interactive graphs
+mtcars <- mtcars %>% 
+  mutate(CarName = rownames(mtcars)) %>% 
+  mutate(toolt = paste0(CarName, '\nTransmission: ', Transmission))
+
+
+p <- ggplot(mtcars, aes(x = mpg, y = hp, color = Transmission)) +
+  geom_point_interactive(aes(tooltip = toolt)) + 
+  theme_classic()
+
+ggiraph(ggobj = p)
+```
+
++ this works great in HTML R markdown
+
++ Line graphs can be tricky with interactive graphs
+
+
+# Communication best practices
+
++ Critical for understanding and creating critical visualizations
+
++ Know your audience
+
++ Know how to use tools to communicate
+    
+    - Visuals: graphs and tables
+    - Written: clear and concise
+    - Presentatoin: engaging and informative
+
+## Communication basics
+
++ Know who the comms will be for
+
+1. Know your audience (managers, C-suite, analysts, scientists)
+2. What do they need to know?
+    
+    - Don't show everything you've done
+    - Do need to know about the data
+    - Do need to know the most important variable and how it makes predictions
+
+3. Type of communication
+
+    - Presentation - can answer questions
+    - Written - include necessary info
+    - Narrow (team) or broad (company/industry distribution)
+    
+4. Use visuals
+
+    - Picture superiority effect
+    - Improve audience understanding
+    - People understand pictures easier than understanding words
+    - easier to **detect patterns** with graphs than with tables
+    - visualization supports **exploration** and **explanation** of the data
+    - think about what the audience can understand
+    
++ Don't take summary statistics at face value. 
+
+    - ALWAYS plot out the data to see what it looks like!
+    - descriptive statistics may be the same, but visually look different
+    - DATASAURUS!!!
+    
++ Gestalt principles
+    
+    1. Similarity
+    2. Proximity
+    3. Enclosure
+    4. Continuation
+    5. Figure/Ground (White Space)
+    6. Symmetry
+    
++ Visualization is for exploration and explanation of the data
+
+    - Exploration:
+        - Learning what the data contains
+        - Determine which one is the one that communicates what I'm trying to explain the BEST
+    - Explanation:
+        - Turn exploration into communication
+        - Make audience understand things without making them work for it
+
+# Interpreting statistical tests
+
++ Ho: some activity does NOT impact the variable of interest
+
++ Ha: some activity DOES impact the variable of interest
+
++ Determine alpha (risk level) 
+
+    - Sample being used may not truly represent the population
+    - Consider the possibility that I get a result that isn't accurate to the population
+    - Results could be wrong: 
+    - Type I: reject a true null
+        - activity or variable does not impact the variable of interest, but the sample indicates that it does
+    - Type II: fail to reject a false null
+        - in the population, there really is an impact of one variable onto the other, but the sample leads you to continue to believe that it's true
+    - **How does the sample represent the population**
+    
++ Communicate results to non-technical audience
+
+    - Likely more interested in Practical significance rather than Statistical significance
+    - Want to know **HOW MUCH**
+    - Communicate Practical significance:
+        - State how large the **impact** is
+    - Communicate Statistical significance: 
+        - State how **reliable** the results are
+        - if p-value < alpha:
+            - results are reliable (relative to the Ho)
+        - else:
+            - results unreliable
+    - "well, suppose if..."
+
++ Communicate results to technical audience
+
+    - Make certain that I understand it!!
+    - Don't attempt to fake it. You will GET GOT!
+    
+## Interpret p-values
+
++ Example: "The mean price of Citrus Hill OJ when there is a special is \$0.03 higher than if there is not a special. If there is no difference between price with and without specials in the underlying population (the Ho), the chance of observing a difference of \$0.03 (or larger) is close to the p-value.
+
+    - Key components:
+        - "\$0.03 higher", <- practical significance
+        - "there is a special vs not a special" <- condition
+        - "if there is no difference" <- Ho 
+        - "chance of observing" <- p-value
+        - "a difference of \$0.03 is close to" <- the p-value is the probability of observing this difference
+  
+
+# Tests of the median
+
++ can't use t-test or chi-squared test to test medians
+
+    - t-test: specifically for means
+    - chi-squared: specifically for proportions
+    - medians are difference because they relate to the rank of the observations
+        - median marks half-below and half-above
+    - CLT: distribution becomes normalized with more observations
+    
+## Wilcoxon signed-rank test
+
++ tests whether the mean ranks differ
+
+    - nonparametric: not assuming the distribution of the parameters
+    
+```{r}
+oj <- read_csv('../02_raw_data/OJ_Data.csv')
+
+vtable(oj)
+
+# difference in price when there is no special, difference in price when there is a special
+wilcox.test(oj$PriceCH[oj$SpecialCH == 0], oj$PriceCH[oj$SpecialCH == 1], conf.int = TRUE)
+```
+
+**Comments**
+
++ Ha: true location shift is not equal to 0
+
+    - difference in location = 2.838e-05
+    - this is a very small difference in the median
+        - this does not make much of an impact
+
++ this is statistically significant, but practical significance is of no impact
+
+## More median tests
+
++ test whether two samples come from the same distribution
+
+    - Ho is equality of distributions, and not just equality of median
+    
+```{r}
+mood.median.test(oj$PriceCH[oj$SpecialCH == 0], oj$PriceCH[oj$SpecialCH == 1])
+```
+
+**Comments**
+
++ p-value is tiny, so reject the null
+
+```{r}
+Median.test(oj$PriceCH, as.factor(oj$SpecialCH), alpha=0.05)
+```
+
+**Comments**
+
++ tiny price difference. Specials don't drive much of a difference
+
+## Use t-test across multiple groups
+
++ the more questions you ask, the higher probability you have of finding something in the sample that does not exist in the population
+
++ pairwise test - only two conditions at a time
+
+    - only examining 2 groups at a time
+
+```{r}
+# compare 4 groups pairwise using bonferroni adjustment
+pairwise.t.test(oj$PriceCH, oj$STORE, p.adjust.method = "bon")
+```
+
+**Comments**
+
++ adjusted the value to compensate for the fact that we've compared 10 different paired t-tests from this dataset
+
++ store 0 and store 2, and store 3 and store 4 are NOT statistically different
+
+    - store 0 and store 2 == 1.000 <- these are the same
+    - store 3 and store 4 == <2e-16 <- these are the same
+    
+
+# Think like a designer
+
++ Must consider my audience
+
+    - What do they know about the data?
+    - What do they know about the business?
+    - Speak **THEIR** language!
+
++ What do I want the audience to know/learn?
+
+    - Do they need to make a decision?
+    - This will drive how to convey my message
+    
++ Design a visual that makes it easy for them to see what they need to know
+
+    - Don't just show the data or say what it is
+    - **USE THE DATA AND VISUAL TO ANSWER THE QUESTION!**
+    
++ Must think like the audience. Stop thinking like an analyst
+
++ 3 general design principles
+
+1. Affordances
+
+    - Make it obvious how the visual is meant to be read
+    - Ryan Drobny nerdy engineering examples
+        - Push/Pull doors, etc.
+    1. Highlight the important stuff
+        - Make my point obvious
+    2. Eliminate Distraction
+    3. Create a visual hierarchy
+    
+  
+2. Accessibility
+
+    - Know your audience so the visual is accessible to them
+    1. Don't over coplicate. Keep it simple, stupid.
+        - Must be able to convey the point I'm trying to make
+    2. Use text to explain
+    
+
+3. Aesthetics
+
+    - People are more likely to read something that is pleasing to the eye
+    1. Take the time to make it pretty, elegant, a pleasure to read
+    2. Use color intentionally - don't just use the default colors
+    3. Align vertical and horizontal spaces
+    4. OK to have white space
+    
+
+# Specialty packages
+
+## PA#7
+
++ only spend 90 mins exploring ggplot2 extension packages
+
++ create RNotebook tutorial for other classmates to learn from me
+
++ figure out how to use it, and develop an example on how to use it
+
++ 3: ggforce
+
+    - making annotations
+
++ include documentation on: 
+
+    - what I've been able to do
+
++ Step 2: Open RMarkdown
+
+    - name and package on top of the file
+    - load data and package will be utilizing
+    - work through application of gg-extension package
+    
++ Step 3: Show and document code to create a specialty visual
+
++ Step 4: Write a brief description of the primary purpose of the package and the function I am demonstrating
+
++ Step 5: Knit the RMarkdown and post the HTML file to the PA7 discussion page on Canvas
+
+
